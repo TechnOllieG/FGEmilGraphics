@@ -2,31 +2,90 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <stdlib.h>
 
-const char* VERTEX_SRC = ""
-"#version 330 core\n"
-"in vec2 a_Position;"
-"uniform vec2 u_Offset;"
-"void main()"
-"{"
-"	gl_Position = vec4(a_Position + u_Offset, 0.0f, 1.0f);"
-"}";
-
-const char* FRAGMENT_SRC = ""
-"#version 330 core\n"
-"out vec4 o_Color;"
-"void main()"
-"{"
-"	o_Color = vec4(1.0f, 0.0f, 0.0f, 1.0f);"
-"}";
-
-GLuint loadShader(GLenum type, const char* src)
+const float triangleA_Data[] =
 {
+	-0.5f, -0.5f,	1.f, 0.f, 0.f,
+	0.5f, -0.5f,	0.f, 1.f, 0.f,
+	0.5f, 0.5f,		0.f, 0.f, 1.f,
+	-0.5f, 0.5f,	1.f, 1.f, 0.f
+};
+
+const unsigned int triangleA_Index_Data[] =
+{
+	0, 1, 2,
+	0, 2, 3
+};
+
+const float triangleB_Data[] =
+{
+	0.2f, 0.5f,		0.f, 0.5f, 0.5f,
+	-0.3f, 0.4f,	0.5f, 0.5f, 0.5f,
+	0.f, -0.1f,		0.f, 0.f, 0.8f
+};
+
+void handleWindowResize(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
+
+GLuint loadMesh(const void* data, unsigned int size, const void* elementData, unsigned int elementSize)
+{
+	// Setup the VAO (Vertex Array Object)
+	GLuint vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	// Setting up the vertex buffer! (VBO)
+	GLuint vertexBuffer;
+	glGenBuffers(1, &vertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+	glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+
+	// Bind buffers to positon and color attributes
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, false, 5 * sizeof(float), 0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	// Create Element Buffer
+	GLuint elementBuffer;
+	glGenBuffers(1, &elementBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, elementSize, elementData, GL_STATIC_DRAW);
+
+	return vao;
+}
+
+GLuint loadShader(GLenum type, const char* path)
+{
+	// Read source file !
+	FILE* file = nullptr;
+	fopen_s(&file, path, "rb");
+	if (!file)
+	{
+		printf("Failed to load shader '%s'\n", path);
+		return 0;
+	}
+
+	// Fetch file size
+	fseek(file, 0, SEEK_END);
+	int fileSize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	// Read
+	char* fileBuffer = (char*)malloc(fileSize);
+	fileSize = fread(fileBuffer, 1, fileSize, file);
+
+	fclose(file);
+
 	static char infoBuffer[1024];
 
 	// Shaders!
 	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, 1, &src, nullptr);
+	glShaderSource(shader, 1, &fileBuffer, &fileSize);
 	glCompileShader(shader);
 
 	GLint compileStatus;
@@ -40,34 +99,10 @@ GLuint loadShader(GLenum type, const char* src)
 	return shader;
 }
 
-int main()
+GLuint loadProgram(const char* vertexPath, const char* fragmentPath)
 {
-	glfwInit();
-
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Graphics Course", nullptr, nullptr);
-	glfwMakeContextCurrent(window);
-
-	glewInit();
-
-	// Setting up the vertex buffer! :)
-	GLuint vertexBuffer;
-	glGenBuffers(1, &vertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-
-	float vertexData[] =
-	{
-		-0.5f, -0.5f,
-		0.5f, -0.5f,
-		0.f, 0.5f
-	};
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
-	
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0);
-
-	GLuint vertexShader = loadShader(GL_VERTEX_SHADER, VERTEX_SRC);
-	GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, FRAGMENT_SRC);
+	GLuint vertexShader = loadShader(GL_VERTEX_SHADER, vertexPath);
+	GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, fragmentPath);
 
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vertexShader);
@@ -75,20 +110,52 @@ int main()
 	glLinkProgram(program);
 	glUseProgram(program);
 
-	GLint u_Offset = glGetUniformLocation(program, "u_Offset");
+	return program;
+}
+
+int main()
+{
+	glfwInit();
+
+	GLFWwindow* window = glfwCreateWindow(800, 600, "Graphics Course", nullptr, nullptr);
+	glfwMakeContextCurrent(window);
+	glewInit();
+
+	glfwSetWindowSizeCallback(window, handleWindowResize);
+
+	// Load meshes
+	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
+	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
+
+	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
+	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
+
+	GLint u_Offset = glGetUniformLocation(programA, "u_Offset");
+	GLuint u_Time = glGetUniformLocation(programB, "u_Time");
 
 	float time = 0.f;
 
 	while (!glfwWindowShouldClose(window))
 	{
 		time += 0.01f;
+
 		glfwPollEvents();
 
-		glClearColor(0.5f, 0.2f, 0.0f, 1.0f);
+		glClearColor(0.5f, 0.f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUniform2f(u_Offset, sin(time), cos(time));
 
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glUseProgram(programA);
+		//glUniform1f(u_Time, time);
+		//glUniform2f(u_Offset, sin(time) * 0.5f, cos(time) * 0.5f);
+		glBindVertexArray(triangleA);
+		//glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		glUseProgram(programB);
+		//glUniform1f(u_Time, time);
+		//glUniform2f(u_Offset, -sin(time) * 0.5f, -cos(time) * 0.5f);
+		glBindVertexArray(triangleB);
+		//glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		glfwSwapBuffers(window);
 	}
