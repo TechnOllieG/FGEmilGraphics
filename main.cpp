@@ -25,6 +25,11 @@ const float triangleB_Data[] =
 	0.f, -0.1f,		0.f, 0.f, 0.8f
 };
 
+const unsigned int triangleB_Index_Data[] =
+{
+	0, 1, 2,
+};
+
 void handleWindowResize(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
@@ -125,13 +130,10 @@ int main()
 
 	// Load meshes
 	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
-	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
+	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleB_Index_Data, sizeof(triangleB_Index_Data));
 
 	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
 	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
-
-	GLint u_Offset = glGetUniformLocation(programA, "u_Offset");
-	GLuint u_Time = glGetUniformLocation(programB, "u_Time");
 
 	float time = 0.f;
 
@@ -145,17 +147,16 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glUseProgram(programA);
-		//glUniform1f(u_Time, time);
-		//glUniform2f(u_Offset, sin(time) * 0.5f, cos(time) * 0.5f);
+		glUniform1f(glGetUniformLocation(programA, "u_Time"), time);
+		glUniform2f(glGetUniformLocation(programA, "u_Offset"), sin(time) * 0.5f, cos(time) * 0.5f);
 		glBindVertexArray(triangleA);
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glUseProgram(programB);
-		//glUniform1f(u_Time, time);
-		//glUniform2f(u_Offset, -sin(time) * 0.5f, -cos(time) * 0.5f);
+		glUniform1f(glGetUniformLocation(programB, "u_Time"), time);
+		glUniform2f(glGetUniformLocation(programB, "u_Offset"), -sin(time) * 0.5f, -cos(time) * 0.5f);
 		glBindVertexArray(triangleB);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
 		glfwSwapBuffers(window);
 	}
