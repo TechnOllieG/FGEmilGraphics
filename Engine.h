@@ -21,7 +21,7 @@ const char* loadedShaderPaths[MAX_SHADER_COUNT];
 GLuint loadedShaders[MAX_SHADER_COUNT];
 
 ShaderProgramSource loadedShaderProgramSources[MAX_SHADER_PROGRAM_COUNT];
-GLint loadedShaderPrograms[MAX_SHADER_PROGRAM_COUNT];
+GLuint loadedShaderPrograms[MAX_SHADER_PROGRAM_COUNT];
 
 Object objects[MAX_OBJECT_COUNT];
 
