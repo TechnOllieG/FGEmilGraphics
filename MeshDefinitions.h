@@ -1,5 +1,6 @@
 #pragma once
 
+#pragma region RAW_DATA
 const float quad_Data[] =
 {
 	-0.5f, -0.5f,	1.f, 0.f, 0.f,
@@ -24,4 +25,18 @@ const float triangle_Data[] =
 const unsigned int triangle_Index_Data[] =
 {
 	0, 1, 2
+};
+#pragma endregion
+
+enum class MeshType
+{
+	Quad,
+	Triangle,
+	MAX // Always leave last
+};
+
+const Mesh meshes[] =
+{
+	Mesh((float*)quad_Data, sizeof(quad_Data), (unsigned int*)quad_Index_Data, sizeof(quad_Index_Data)),
+	Mesh((float*)triangle_Data, sizeof(triangle_Data), (unsigned int*)triangle_Index_Data, sizeof(triangle_Index_Data))
 };

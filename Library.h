@@ -3,14 +3,18 @@
 
 struct Vector2
 {
-	float x;
-	float y;
+	float x, y;
 
 	Vector2()
 	{
 		x = 0.f;
 		y = 0.f;
 	}
+};
+
+struct Color
+{
+	float r, g, b, a;
 };
 
 class Object
@@ -25,9 +29,9 @@ public:
 class Mesh
 {
 public:
-	void* data = nullptr;
+	float* data = nullptr;
 	unsigned int dataSize = -1;
-	void* elementData = nullptr;
+	unsigned int* elementData = nullptr;
 	unsigned int elementDataSize = -1;
 	bool isValid = false;
 
@@ -36,7 +40,7 @@ public:
 		isValid = false;
 	}
 
-	Mesh(void* in_data, unsigned int in_dataSize, void* in_elementData, unsigned int in_elementDataSize)
+	Mesh(float* in_data, unsigned int in_dataSize, unsigned int* in_elementData, unsigned int in_elementDataSize)
 	{
 		data = in_data;
 		dataSize = in_dataSize;
