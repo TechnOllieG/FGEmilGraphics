@@ -1,37 +1,82 @@
 #include <stdio.h>
-#include <GL/glew.h>
+#include "Library.h"
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <stdlib.h>
+#include "MeshDefinitions.h"
 
-const float triangleA_Data[] =
-{
-	-0.5f, -0.5f,	1.f, 0.f, 0.f,
-	0.5f, -0.5f,	0.f, 1.f, 0.f,
-	0.5f, 0.5f,		0.f, 0.f, 1.f,
-	-0.5f, 0.5f,	1.f, 1.f, 0.f
-};
+#define MAX_MESH_COUNT 1024
+#define MAX_SHADER_COUNT 512
+#define MAX_SHADER_PROGRAM_COUNT 256
+#define MAX_OBJECT_COUNT 2048
 
-const unsigned int triangleA_Index_Data[] =
-{
-	0, 1, 2,
-	0, 2, 3
-};
+Mesh loadedMeshes[MAX_MESH_COUNT];
+GLuint loadedVAOs[MAX_MESH_COUNT];
+int loadedMeshesIndicesCount[MAX_MESH_COUNT];
 
-const float triangleB_Data[] =
+const char* loadedShaderPaths[MAX_SHADER_COUNT];
+GLuint loadedShaders[MAX_SHADER_COUNT];
+
+ShaderProgramSource loadedShaderProgramSources[MAX_SHADER_PROGRAM_COUNT];
+GLint loadedShaderPrograms[MAX_SHADER_PROGRAM_COUNT];
+
+Object objects[MAX_OBJECT_COUNT];
+
+int getLoadedMeshIndex(Mesh mesh)
 {
-	0.2f, 0.5f,		0.f, 0.5f, 0.5f,
-	-0.3f, 0.4f,	0.5f, 0.5f, 0.5f,
-	0.f, -0.1f,		0.f, 0.f, 0.8f
-};
+	for (int i = 0; i < MAX_MESH_COUNT; i++)
+	{
+		if (!loadedMeshes[i].isValid)
+			return -1;
+
+		if (loadedMeshes[i] == mesh)
+			return i;
+
+		return -1;
+	}
+}
+
+int getLoadedShaderPathIndex(const char* path)
+{
+	for (int i = 0; i < MAX_SHADER_COUNT; i++)
+	{
+		if (loadedShaderPaths[i] == nullptr)
+			return -1;
+
+		if (loadedShaderPaths[i] == path)
+			return i;
+
+		return -1;
+	}
+}
+
+int getLoadedShaderProgramSourceIndex(ShaderProgramSource source)
+{
+	for (int i = 0; i < MAX_SHADER_PROGRAM_COUNT; i++)
+	{
+		if (!loadedShaderProgramSources[i].isValid)
+			return -1;
+
+		if (loadedShaderProgramSources[i] == source)
+			return i;
+
+		return -1;
+	}
+}
 
 void handleWindowResize(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
 
-GLuint loadMesh(const void* data, unsigned int size, const void* elementData, unsigned int elementSize)
+int loadMesh(Mesh meshData)
 {
+	int index = getLoadedMeshIndex(meshData);
+	if (index != -1)
+	{
+		return loadedVAOs[index];
+	}
+
 	// Setup the VAO (Vertex Array Object)
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
@@ -42,7 +87,7 @@ GLuint loadMesh(const void* data, unsigned int size, const void* elementData, un
 	glGenBuffers(1, &vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
-	glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, meshData.dataSize, meshData.data, GL_STATIC_DRAW);
 
 	// Bind buffers to positon and color attributes
 	glEnableVertexAttribArray(0);
@@ -54,13 +99,35 @@ GLuint loadMesh(const void* data, unsigned int size, const void* elementData, un
 	GLuint elementBuffer;
 	glGenBuffers(1, &elementBuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, elementSize, elementData, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshData.elementDataSize, meshData.elementData, GL_STATIC_DRAW);
 
-	return vao;
+	for (int i = 0; i < MAX_MESH_COUNT; i++)
+	{
+		if (loadedMeshes[i].isValid)
+		{
+			if (i == MAX_MESH_COUNT - 1)
+			{
+				printf("Mesh array is full");
+				break;
+			}
+			continue;
+		}
+
+		loadedMeshes[i] = meshData;
+		loadedVAOs[i] = vao;
+		loadedMeshesIndicesCount[i] = meshData.elementDataSize;
+		return i;
+	}
 }
 
-GLuint loadShader(GLenum type, const char* path)
+int loadShader(GLenum type, const char* path)
 {
+	int index = getLoadedShaderPathIndex(path);
+	if (index != -1)
+	{
+		return loadedShaders[index];
+	}
+
 	// Read source file !
 	FILE* file = nullptr;
 	fopen_s(&file, path, "rb");
@@ -96,13 +163,35 @@ GLuint loadShader(GLenum type, const char* path)
 		printf("COMPILE ERROR:\n%s\n", infoBuffer);
 	}
 
-	return shader;
+	for (int i = 0; i < MAX_SHADER_COUNT; i++)
+	{
+		if (loadedShaderPaths[i] != nullptr)
+		{
+			if (i == MAX_SHADER_COUNT - 1)
+			{
+				printf("Shader array is full");
+				break;
+			}
+
+			continue;
+		}
+
+		loadedShaderPaths[i] = path;
+		loadedShaders[i] = shader;
+		return i;
+	}
 }
 
-GLuint loadProgram(const char* vertexPath, const char* fragmentPath)
+int loadProgram(ShaderProgramSource source)
 {
-	GLuint vertexShader = loadShader(GL_VERTEX_SHADER, vertexPath);
-	GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, fragmentPath);
+	int index = getLoadedShaderProgramSourceIndex(source);
+	if (index != -1)
+	{
+		return loadedShaderPrograms[index];
+	}
+
+	GLuint vertexShader = loadShader(GL_VERTEX_SHADER, source.vertexPath);
+	GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, source.fragmentPath);
 
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vertexShader);
@@ -110,7 +199,40 @@ GLuint loadProgram(const char* vertexPath, const char* fragmentPath)
 	glLinkProgram(program);
 	glUseProgram(program);
 
-	return program;
+	for (int i = 0; i < MAX_SHADER_PROGRAM_COUNT; i++)
+	{
+		if (loadedShaderProgramSources[i].isValid)
+		{
+			if (i == MAX_SHADER_PROGRAM_COUNT - 1)
+			{
+				printf("Shader program array is full");
+				break;
+			}
+
+			continue;
+		}
+
+		loadedShaderProgramSources[i] = source;
+		loadedShaderPrograms[i] = program;
+		return i;
+	}
+}
+
+int spawnObject(GLuint vaoIndex, GLuint shaderProgramIndex)
+{
+	for (int i = 0; i < MAX_OBJECT_COUNT; i++)
+	{
+		if (objects[i].isValid)
+			continue;
+
+		objects[i].vaoIndex = vaoIndex;
+		objects[i].shaderProgramIndex = shaderProgramIndex;
+		objects[i].isValid = true;
+		return i;
+	}
+
+	printf("Can't spawn object, object array is full");
+	return -1;
 }
 
 int main()
@@ -123,15 +245,11 @@ int main()
 
 	glfwSetWindowSizeCallback(window, handleWindowResize);
 
-	// Load meshes
-	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
-	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
+	spawnObject(loadMesh(Mesh((void*)quad_Data, sizeof(quad_Data), (void*)quad_Index_Data, sizeof(quad_Index_Data))),
+		loadProgram(ShaderProgramSource("shaders/test.vert", "shaders/test.frag")));
 
-	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
-	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
-
-	GLint u_Offset = glGetUniformLocation(programA, "u_Offset");
-	GLuint u_Time = glGetUniformLocation(programB, "u_Time");
+	spawnObject(loadMesh(Mesh((void*)triangle_Data, sizeof(triangle_Data), (void*)triangle_Index_Data, sizeof(triangle_Index_Data))),
+		loadProgram(ShaderProgramSource("shaders/test.vert", "shaders/poop.frag")));
 
 	float time = 0.f;
 
@@ -144,18 +262,23 @@ int main()
 		glClearColor(0.5f, 0.f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glUseProgram(programA);
-		//glUniform1f(u_Time, time);
-		//glUniform2f(u_Offset, sin(time) * 0.5f, cos(time) * 0.5f);
-		glBindVertexArray(triangleA);
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		for (int i = 0; i < MAX_OBJECT_COUNT; i++)
+		{
+			if (!objects[i].isValid)
+				break;
 
-		glUseProgram(programB);
-		//glUniform1f(u_Time, time);
-		//glUniform2f(u_Offset, -sin(time) * 0.5f, -cos(time) * 0.5f);
-		glBindVertexArray(triangleB);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
+			GLuint program = loadedShaderPrograms[objects[i].shaderProgramIndex];
+			GLuint vao = loadedVAOs[objects[i].vaoIndex];
+			unsigned int elementCount = loadedMeshesIndicesCount[objects[i].vaoIndex];
+
+			glUseProgram(program);
+
+			glUniform1f(glGetUniformLocation(program, "u_Time"), time);
+			glUniform2f(glGetUniformLocation(program, "u_Offset"), objects[i].position.x, objects[i].position.y);
+
+			glBindVertexArray(vao);
+			glDrawElements(GL_TRIANGLES, elementCount, GL_UNSIGNED_INT, 0);
+		}
 
 		glfwSwapBuffers(window);
 	}
