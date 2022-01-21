@@ -3,6 +3,42 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <stdlib.h>
+#include "Library.h"
+
+struct Matrix
+{
+	float m11, m12, m13;
+	float m21, m22, m23;
+	float m31, m32, m33;
+
+	Matrix operator*(const Matrix& rhs) const
+	{
+		Matrix result;
+
+		// m11 = Vector3.Dot(this.col(1) rhs.row(1))
+		result.m11 = m11 * rhs.m11 + m21 * rhs.m12 + m31 * rhs.m13;
+		// m12 = Vector3.Dot(this.col(2) rhs.row(1))
+		result.m12 = m12 * rhs.m11 + m22 * rhs.m12 + m32 * rhs.m13;
+		// m13 = Vector3.Dot(this.col(3) rhs.row(1))
+		result.m13 = m13 * rhs.m11 + m23 * rhs.m12 + m33 * rhs.m13;
+
+		// m11 = Vector3.Dot(this.col(1) rhs.row(2))
+		result.m21 = m11 * rhs.m21 + m21 * rhs.m22 + m31 * rhs.m23;
+		// m12 = Vector3.Dot(this.col(2) rhs.row(2))
+		result.m22 = m12 * rhs.m21 + m22 * rhs.m22 + m32 * rhs.m23;
+		// m13 = Vector3.Dot(this.col(3) rhs.row(2))
+		result.m23 = m13 * rhs.m21 + m23 * rhs.m22 + m33 * rhs.m23;
+
+		// m11 = Vector3.Dot(this.col(1) rhs.row(3))
+		result.m31 = m11 * rhs.m31 + m21 * rhs.m32 + m31 * rhs.m33;
+		// m12 = Vector3.Dot(this.col(2) rhs.row(3))
+		result.m32 = m12 * rhs.m31 + m22 * rhs.m32 + m32 * rhs.m33;
+		// m13 = Vector3.Dot(this.col(3) rhs.row(3))
+		result.m33 = m13 * rhs.m31 + m23 * rhs.m32 + m33 * rhs.m33;
+
+		return result;
+	}
+};
 
 const float triangleA_Data[] =
 {
@@ -30,9 +66,14 @@ const unsigned int triangleB_Index_Data[] =
 	0, 1, 2,
 };
 
+int windowWidth = 800.f;
+int windowHeight = 600.f;
+
 void handleWindowResize(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+	windowWidth = width;
+	windowHeight = height;
 }
 
 GLuint loadMesh(const void* data, unsigned int size, const void* elementData, unsigned int elementSize)
@@ -136,15 +177,42 @@ int main()
 	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
 
 	float time = 0.f;
-
-	float matrix[] =
-	{
-		1.f, 0.f, // x basis
-		0.f, 1.f // y basis
-	};
-
+	
 	while (!glfwWindowShouldClose(window))
 	{
+		float angle = deg2rad * time;
+		Matrix rotation =
+		{
+			cos(time), -sin(time), 0.f,
+			sin(time), cos(time), 0.f,
+			0.f, 0.f, 1.f
+		};
+
+		Matrix translate =
+		{
+			1.f, 0.f, 0.f,
+			0.f, 1.f, 0.f,
+			0.5f, 0.f, 1.f
+		};
+
+		Matrix scale =
+		{
+			2.f, 0.f, 0.f,
+			0.f, 1.f, 0.f,
+			0.f, 0.f, 1.f
+		};
+
+		float aspect = (float) windowHeight / (float) windowWidth;
+
+		Matrix projection =
+		{
+			aspect, 0.f, 0.f,
+			0.f, 1.f, 0.f,
+			0.f, 0.f, 1.f
+		};
+
+		Matrix transform = projection * rotation * scale;
+
 		time += 0.01f;
 
 		glfwPollEvents();
@@ -154,7 +222,7 @@ int main()
 
 		glUseProgram(programA);
 		glUniform1f(glGetUniformLocation(programA, "u_Time"), time);
-		glUniformMatrix2fv(glGetUniformLocation(programA, "u_Transform"), 1, false, matrix);
+		glUniformMatrix3fv(glGetUniformLocation(programA, "u_Transform"), 1, false, (float*)&transform);
 		glBindVertexArray(triangleA);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
