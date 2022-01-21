@@ -137,6 +137,12 @@ int main()
 
 	float time = 0.f;
 
+	float matrix[] =
+	{
+		1.f, 0.f, // x basis
+		0.f, 1.f // y basis
+	};
+
 	while (!glfwWindowShouldClose(window))
 	{
 		time += 0.01f;
@@ -148,15 +154,15 @@ int main()
 
 		glUseProgram(programA);
 		glUniform1f(glGetUniformLocation(programA, "u_Time"), time);
-		glUniform2f(glGetUniformLocation(programA, "u_Offset"), sin(time) * 0.5f, cos(time) * 0.5f);
+		glUniformMatrix2fv(glGetUniformLocation(programA, "u_Transform"), 1, false, matrix);
 		glBindVertexArray(triangleA);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		glUseProgram(programB);
+		/*glUseProgram(programB);
 		glUniform1f(glGetUniformLocation(programB, "u_Time"), time);
 		glUniform2f(glGetUniformLocation(programB, "u_Offset"), -sin(time) * 0.5f, -cos(time) * 0.5f);
 		glBindVertexArray(triangleB);
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);*/
 
 		glfwSwapBuffers(window);
 	}
