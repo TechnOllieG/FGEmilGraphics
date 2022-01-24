@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include "Library.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 struct Matrix
 {
 	float m11, m12, m13;
@@ -42,10 +45,11 @@ struct Matrix
 
 const float triangleA_Data[] =
 {
-	-0.5f, -0.5f,	1.f, 0.f, 0.f,
-	0.5f, -0.5f,	0.f, 1.f, 0.f,
-	0.5f, 0.5f,		0.f, 0.f, 1.f,
-	-0.5f, 0.5f,	1.f, 1.f, 0.f
+	// position		// color			// uv
+	-0.5f, -0.5f,	1.f, 0.f, 0.f,		0.f, 0.f,
+	0.5f, -0.5f,	0.f, 1.f, 0.f,		1.f, 0.f,
+	0.5f, 0.5f,		0.f, 0.f, 1.f,		1.f, 1.f,
+	-0.5f, 0.5f,	1.f, 1.f, 0.f,		0.f, 1.f
 };
 
 const unsigned int triangleA_Index_Data[] =
@@ -92,9 +96,11 @@ GLuint loadMesh(const void* data, unsigned int size, const void* elementData, un
 
 	// Bind buffers to positon and color attributes
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, false, 5 * sizeof(float), 0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, false, 7 * sizeof(float), 0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, false, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, false, 7 * sizeof(float), (void*)(5 * sizeof(float)));
 
 	// Create Element Buffer
 	GLuint elementBuffer;
@@ -173,14 +179,51 @@ int main()
 	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
 	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleB_Index_Data, sizeof(triangleB_Index_Data));
 
+	int texWidth;
+	int texHeight;
+	int texComponents;
+	stbi_uc* texPixels = stbi_load("gravel.jpg", &texWidth, &texHeight, &texComponents, 3);
+
 	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
 	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
+
+	GLint u_Transform = glGetUniformLocation(programA, "u_Transform");
+	GLint u_Projection = glGetUniformLocation(programA, "u_Projection");
+	GLint u_View = glGetUniformLocation(programA, "u_View");
+	GLint u_Time = glGetUniformLocation(programA, "u_Time");
 
 	float time = 0.f;
 	
 	while (!glfwWindowShouldClose(window))
 	{
 		float angle = deg2rad * time;
+
+		// Calculate projection
+		float aspect = (float) windowWidth / (float) windowHeight;
+		float scaleFactor = 1.f / 5.f;
+		Matrix projection =
+		{
+			scaleFactor, 0.f, 0.f,
+			0.f, scaleFactor * aspect, 0.f,
+			0.f, 0.f, 1.f
+		};
+
+		glUniformMatrix3fv(u_Projection, 1, false, (GLfloat*)&projection);
+
+		float cameraX = sin(time) * 2.f;
+		float cameraY = 0.5f;
+
+		cameraX = 0.f;
+		cameraY = 0.f;
+		Matrix view =
+		{
+			1.f, 0.f, 0.f,
+			0.f, 1.f, 0.f,
+			-cameraX, -cameraY, 1.f
+		};
+
+		glUniformMatrix3fv(u_View, 1, false, (GLfloat*)&view);
+
 		Matrix rotation =
 		{
 			cos(time), -sin(time), 0.f,
@@ -190,28 +233,19 @@ int main()
 
 		Matrix translate =
 		{
-			1.f, 0.f, 0.f,
-			0.f, 1.f, 0.f,
-			0.5f, 0.f, 1.f
+			2.f, 0.f, 0.f,
+			0.f, 2.f, 0.f,
+			0.f, 0.f, 1.f
 		};
 
 		Matrix scale =
 		{
-			2.f, 0.f, 0.f,
+			1.f, 0.f, 0.f,
 			0.f, 1.f, 0.f,
 			0.f, 0.f, 1.f
 		};
 
-		float aspect = (float) windowHeight / (float) windowWidth;
-
-		Matrix projection =
-		{
-			aspect, 0.f, 0.f,
-			0.f, 1.f, 0.f,
-			0.f, 0.f, 1.f
-		};
-
-		Matrix transform = projection * rotation * scale;
+		Matrix transform = translate * scale;
 
 		time += 0.01f;
 
