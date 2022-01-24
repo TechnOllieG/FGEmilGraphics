@@ -7,6 +7,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define IMAGE_CHANNEL_AMOUNT 4
 
 struct Matrix
 {
@@ -78,6 +79,22 @@ void handleWindowResize(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 	windowWidth = width;
 	windowHeight = height;
+}
+
+void flipTexture(stbi_uc* data, int width, int height, int components)
+{
+	int lineSize = width * components;
+	int totalSize = width * height * components;
+	stbi_uc* buffer = (stbi_uc*) malloc(totalSize);
+	memcpy(buffer, data, totalSize);
+
+	for(int y = 0; y < height; ++y)
+	{
+		int flippedY = height - 1 - y;
+		memcpy(data + lineSize * y, buffer + lineSize * flippedY, lineSize);
+	}
+
+	free(buffer);
 }
 
 GLuint loadMesh(const void* data, unsigned int size, const void* elementData, unsigned int elementSize)
@@ -165,6 +182,33 @@ GLuint loadProgram(const char* vertexPath, const char* fragmentPath)
 	return program;
 }
 
+GLuint loadTexture(const char* path)
+{
+	// Load texture from file
+	int texWidth;
+	int texHeight;
+	int texComponents;
+	stbi_uc* texPixels = stbi_load(path, &texWidth, &texHeight, &texComponents, IMAGE_CHANNEL_AMOUNT);
+
+	flipTexture(texPixels, texWidth, texHeight, IMAGE_CHANNEL_AMOUNT);
+
+	// Upload to OpenGL
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, texPixels);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	free(texPixels);
+
+	return texture;
+}
+
 int main()
 {
 	glfwInit();
@@ -179,10 +223,14 @@ int main()
 	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
 	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleB_Index_Data, sizeof(triangleB_Index_Data));
 
-	int texWidth;
-	int texHeight;
-	int texComponents;
-	stbi_uc* texPixels = stbi_load("gravel.jpg", &texWidth, &texHeight, &texComponents, 3);
+	// Load textures!
+	GLuint textureA = loadTexture("gravel.jpg");
+	GLuint textureB = loadTexture("test.png");
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureA);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textureB);
 
 	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
 	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
@@ -191,6 +239,12 @@ int main()
 	GLint u_Projection = glGetUniformLocation(programA, "u_Projection");
 	GLint u_View = glGetUniformLocation(programA, "u_View");
 	GLint u_Time = glGetUniformLocation(programA, "u_Time");
+
+	glUseProgram(programA);
+	GLint u_SamplerA = glGetUniformLocation(programA, "u_SamplerA");
+	GLint u_SamplerB = glGetUniformLocation(programA, "u_SamplerB");
+	glUniform1i(u_SamplerA, 0);
+	glUniform1i(u_SamplerB, 1);
 
 	float time = 0.f;
 	
@@ -233,15 +287,15 @@ int main()
 
 		Matrix translate =
 		{
-			2.f, 0.f, 0.f,
-			0.f, 2.f, 0.f,
+			1.f, 0.f, 0.f,
+			0.f, 1.f, 0.f,
 			0.f, 0.f, 1.f
 		};
 
 		Matrix scale =
 		{
-			1.f, 0.f, 0.f,
-			0.f, 1.f, 0.f,
+			6.f, 0.f, 0.f,
+			0.f, 4.f, 0.f,
 			0.f, 0.f, 1.f
 		};
 
