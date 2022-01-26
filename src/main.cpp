@@ -4,10 +4,17 @@
 #include <cmath>
 #include <stdlib.h>
 #include "Library.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include "Camera.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define IMAGE_CHANNEL_AMOUNT 4
+
+using namespace glm;
+
+GLFWwindow* window;
 
 struct Matrix
 {
@@ -70,6 +77,11 @@ const unsigned int triangleB_Index_Data[] =
 {
 	0, 1, 2,
 };
+
+void drawQuad(mat4 transform)
+{
+	
+}
 
 int windowWidth = 800.f;
 int windowHeight = 600.f;
@@ -213,7 +225,7 @@ int main()
 {
 	glfwInit();
 
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Graphics Course", nullptr, nullptr);
+	window = glfwCreateWindow(800, 600, "Graphics Course", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glewInit();
 
@@ -221,21 +233,17 @@ int main()
 
 	// Load meshes
 	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
-	GLuint triangleB = loadMesh(triangleB_Data, sizeof(triangleB_Data), triangleB_Index_Data, sizeof(triangleB_Index_Data));
 
 	// Load textures!
-	GLuint textureA = loadTexture("gravel.jpg");
-	GLuint textureB = loadTexture("test.png");
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureA);
-	glActiveTexture(GL_TEXTURE1);
+	GLuint textureA = loadTexture("textures/gravel.jpg");
+	GLuint textureB = loadTexture("textures/grass.jpg");
+	
 	glBindTexture(GL_TEXTURE_2D, textureB);
 
 	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
 	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
 
-	GLint u_Transform = glGetUniformLocation(programA, "u_Transform");
+	GLint u_Model = glGetUniformLocation(programA, "u_Model");
 	GLint u_Projection = glGetUniformLocation(programA, "u_Projection");
 	GLint u_View = glGetUniformLocation(programA, "u_View");
 	GLint u_Time = glGetUniformLocation(programA, "u_Time");
@@ -246,79 +254,56 @@ int main()
 	glUniform1i(u_SamplerA, 0);
 	glUniform1i(u_SamplerB, 1);
 
+	Camera camera;
+	camera.position = vec3(-10.f, 1.f, 1.f);
+
 	float time = 0.f;
+
+	glEnable(GL_DEPTH_TEST);
 	
 	while (!glfwWindowShouldClose(window))
 	{
-		float angle = deg2rad * time;
-
-		// Calculate projection
-		float aspect = (float) windowWidth / (float) windowHeight;
-		float scaleFactor = 1.f / 5.f;
-		Matrix projection =
-		{
-			scaleFactor, 0.f, 0.f,
-			0.f, scaleFactor * aspect, 0.f,
-			0.f, 0.f, 1.f
-		};
-
-		glUniformMatrix3fv(u_Projection, 1, false, (GLfloat*)&projection);
-
-		float cameraX = sin(time) * 2.f;
-		float cameraY = 0.5f;
-
-		cameraX = 0.f;
-		cameraY = 0.f;
-		Matrix view =
-		{
-			1.f, 0.f, 0.f,
-			0.f, 1.f, 0.f,
-			-cameraX, -cameraY, 1.f
-		};
-
-		glUniformMatrix3fv(u_View, 1, false, (GLfloat*)&view);
-
-		Matrix rotation =
-		{
-			cos(time), -sin(time), 0.f,
-			sin(time), cos(time), 0.f,
-			0.f, 0.f, 1.f
-		};
-
-		Matrix translate =
-		{
-			1.f, 0.f, 0.f,
-			0.f, 1.f, 0.f,
-			0.f, 0.f, 1.f
-		};
-
-		Matrix scale =
-		{
-			6.f, 0.f, 0.f,
-			0.f, 4.f, 0.f,
-			0.f, 0.f, 1.f
-		};
-
-		Matrix transform = translate * scale;
+		glfwPollEvents();
+		glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		time += 0.01f;
+		glUniform1f(u_Time, time);
 
-		glfwPollEvents();
+		// Update view + projection
+		mat4 identity(1.f);
 
-		glClearColor(0.5f, 0.f, 1.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		float aspect = (float)windowWidth / (float)windowHeight;
+		mat4 projection = perspective(radians(90.f), aspect, 0.1f, 100.f);
+		//projection = ortho(-5.f * aspect, 5.f * aspect, -5.f, 5.f, -5.f, 10.f);
 
-		glUseProgram(programA);
-		glUniform1f(glGetUniformLocation(programA, "u_Time"), time);
-		glUniformMatrix3fv(glGetUniformLocation(programA, "u_Transform"), 1, false, (float*)&transform);
-		glBindVertexArray(triangleA);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glUniformMatrix4fv(u_Projection, 1, false, (GLfloat*)&projection);
 
-		/*glUseProgram(programB);
-		glUniform1f(glGetUniformLocation(programB, "u_Time"), time);
-		glUniform2f(glGetUniformLocation(programB, "u_Offset"), -sin(time) * 0.5f, -cos(time) * 0.5f);
-		glBindVertexArray(triangleB);
-		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);*/
+		// View matrix
+		mat4 view = camera.getViewMatrix();
+		glUniformMatrix4fv(u_View, 1, false, (GLfloat*)&view);
+
+		// Render grass
+		{
+			mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
+			model = rotate(mat4(1.f), pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
+			model = scale(model, vec3(50.f));
+			glBindTexture(GL_TEXTURE_2D, textureB);
+			glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
+
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		}
+
+		// Render wall
+		{
+			mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
+			model = translate(mat4(1.f), vec3(0.f, 0.5f, 0.f)) * rotate(mat4(1.f), time, vec3(0.f, 1.f, 0.f));
+
+			glBindTexture(GL_TEXTURE_2D, textureA);
+			glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
+
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		}
 
 		glfwSwapBuffers(window);
 	}
