@@ -51,37 +51,81 @@ struct Matrix
 	}
 };
 
-const float triangleA_Data[] =
+const float quad_Data[] =
 {
-	// position		// color			// uv
-	-0.5f, -0.5f,	1.f, 0.f, 0.f,		0.f, 0.f,
-	0.5f, -0.5f,	0.f, 1.f, 0.f,		1.f, 0.f,
-	0.5f, 0.5f,		0.f, 0.f, 1.f,		1.f, 1.f,
-	-0.5f, 0.5f,	1.f, 1.f, 0.f,		0.f, 1.f
+	// position			// uv			// normals
+	-0.5f, -0.5f, 0.f,	0.f, 0.f,		0.f, 0.f, 1.f,
+	0.5f, -0.5f, 0.f,	1.f, 0.f,		0.f, 0.f, 1.f,
+	0.5f, 0.5f, 0.f,	1.f, 1.f,		0.f, 0.f, 1.f,
+	-0.5f, 0.5f, 0.f,	0.f, 1.f,		0.f, 0.f, 1.f,
 };
 
-const unsigned int triangleA_Index_Data[] =
+const unsigned int quad_Index_Data[] =
 {
 	0, 1, 2,
 	0, 2, 3
 };
 
-const float triangleB_Data[] =
+const float cube_Data[] =
 {
-	0.2f, 0.5f,		0.f, 0.5f, 0.5f,
-	-0.3f, 0.4f,	0.5f, 0.5f, 0.5f,
-	0.f, -0.1f,		0.f, 0.f, 0.8f
+	// position				// uv			// normals
+	-0.5f, -0.5f, 0.5f,		0.f, 0.f,		0.f, 0.f, 1.f,
+	0.5f, -0.5f, 0.5f,		1.f, 0.f,		0.f, 0.f, 1.f,
+	0.5f, 0.5f, 0.5f,		1.f, 1.f,		0.f, 0.f, 1.f,
+	-0.5f, 0.5f, 0.5f,		0.f, 1.f,		0.f, 0.f, 1.f,
+
+	0.5f, -0.5f, -0.5f,		1.f, 0.f,		0.f, 0.f, -1.f,
+	-0.5f, -0.5f, -0.5f,	0.f, 0.f,		0.f, 0.f, -1.f,
+	-0.5f, 0.5f, -0.5f,		0.f, 1.f,		0.f, 0.f, -1.f,
+	0.5f, 0.5f, -0.5f,		1.f, 1.f,		0.f, 0.f, -1.f,
+
+	-0.5f, 0.5f, 0.5f,		1.f, 0.f,		0.f, 1.f, 0.f,
+	0.5f, 0.5f, 0.5f,		0.f, 0.f,		0.f, 1.f, 0.f,
+	0.5f, 0.5f, -0.5f,		0.f, 1.f,		0.f, 1.f, 0.f,
+	-0.5f, 0.5f, -0.5f,		1.f, 1.f,		0.f, 1.f, 0.f,
+
+	-0.5f, -0.5f, 0.5f,		1.f, 0.f,		0.f, -1.f, 0.f,
+	-0.5f, -0.5f, -0.5f,	0.f, 0.f,		0.f, -1.f, 0.f,
+	0.5f, -0.5f, -0.5f,		0.f, 1.f,		0.f, -1.f, 0.f,
+	0.5f, -0.5f, 0.5f,		1.f, 1.f,		0.f, -1.f, 0.f,
+
+	0.5f, -0.5f, 0.5f,		1.f, 0.f,		1.f, 0.f, 0.f,
+	0.5f, -0.5f, -0.5f,		0.f, 0.f,		1.f, 0.f, 0.f,
+	0.5f, 0.5f, -0.5f,		0.f, 1.f,		1.f, 0.f, 0.f,
+	0.5f, 0.5f, 0.5f,		1.f, 1.f,		1.f, 0.f, 0.f,
+
+	-0.5f, -0.5f, 0.5f,		1.f, 0.f,		-1.f, 0.f, 0.f,
+	-0.5f, 0.5f, 0.5f,		0.f, 0.f,		-1.f, 0.f, 0.f,
+	-0.5f, 0.5f, -0.5f,		0.f, 1.f,		-1.f, 0.f, 0.f,
+	-0.5f, -0.5f, -0.5f,	1.f, 1.f,		-1.f, 0.f, 0.f,
 };
 
-const unsigned int triangleB_Index_Data[] =
+const int cube_Index_Data[] =
 {
+	// Z+
 	0, 1, 2,
-};
+	0, 2, 3,
 
-void drawQuad(mat4 transform)
-{
-	
-}
+	// Z-
+	4, 5, 6,
+	4, 6, 7,
+
+	// Y+
+	8, 9, 10,
+	8, 10, 11,
+
+	// Y-
+	12, 13, 14,
+	12, 14, 15,
+
+	// X+
+	16, 17, 18,
+	16, 18, 19,
+
+	// X-
+	20, 21, 22,
+	20, 22, 23,
+};
 
 int windowWidth = 800.f;
 int windowHeight = 600.f;
@@ -125,11 +169,11 @@ GLuint loadMesh(const void* data, unsigned int size, const void* elementData, un
 
 	// Bind buffers to positon and color attributes
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, false, 7 * sizeof(float), 0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, 8 * sizeof(float), 0);
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, 7 * sizeof(float), (void*)(2 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, false, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, false, 7 * sizeof(float), (void*)(5 * sizeof(float)));
+	glVertexAttribPointer(2, 3, GL_FLOAT, false, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 
 	// Create Element Buffer
 	GLuint elementBuffer;
@@ -232,7 +276,9 @@ int main()
 	glfwSetWindowSizeCallback(window, handleWindowResize);
 
 	// Load meshes
-	GLuint triangleA = loadMesh(triangleA_Data, sizeof(triangleA_Data), triangleA_Index_Data, sizeof(triangleA_Index_Data));
+	GLuint quad = loadMesh(quad_Data, sizeof(quad_Data), quad_Index_Data, sizeof(quad_Index_Data));
+	GLuint cube = loadMesh(cube_Data, sizeof(cube_Data), cube_Index_Data, sizeof(cube_Index_Data));
+	glBindVertexArray(quad);
 
 	// Load textures!
 	GLuint textureA = loadTexture("textures/gravel.jpg");
@@ -241,7 +287,6 @@ int main()
 	glBindTexture(GL_TEXTURE_2D, textureB);
 
 	GLuint programA = loadProgram("shaders/test.vert", "shaders/test.frag");
-	GLuint programB = loadProgram("shaders/poop.vert", "shaders/poop.frag");
 
 	GLint u_Model = glGetUniformLocation(programA, "u_Model");
 	GLint u_Projection = glGetUniformLocation(programA, "u_Projection");
@@ -255,10 +300,11 @@ int main()
 	glUniform1i(u_SamplerB, 1);
 
 	Camera camera;
-	camera.position = vec3(-10.f, 1.f, 1.f);
+	camera.position = vec3(-10.f, 1.f, 5.f);
 
 	float time = 0.f;
 
+	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	
 	while (!glfwWindowShouldClose(window))
@@ -286,23 +332,24 @@ int main()
 		// Render grass
 		{
 			mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
-			model = rotate(mat4(1.f), pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
+			model = rotate(mat4(1.f), -pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
 			model = scale(model, vec3(50.f));
+
+			glBindVertexArray(quad);
 			glBindTexture(GL_TEXTURE_2D, textureB);
 			glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
-
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 		}
 
-		// Render wall
+		// Render cube
 		{
 			mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
-			model = translate(mat4(1.f), vec3(0.f, 0.5f, 0.f)) * rotate(mat4(1.f), time, vec3(0.f, 1.f, 0.f));
+			model = translate(mat4(1.f), vec3(0.f, 1.5f, 0.f)) *rotate(mat4(1.f), time, vec3(2.f, 1.f, -3.2f));
 
+			glBindVertexArray(cube);
 			glBindTexture(GL_TEXTURE_2D, textureA);
 			glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
-
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+			glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, nullptr);
 		}
 
 		glfwSwapBuffers(window);
