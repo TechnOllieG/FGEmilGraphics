@@ -299,6 +299,12 @@ int main()
 	glUniform1i(u_SamplerA, 0);
 	glUniform1i(u_SamplerB, 1);
 
+	GLint u_DirLight = glGetUniformLocation(programA, "u_DirLight");
+	vec3 directionalLight = normalize(vec3(2.f, -5.f, -1.f));
+	glUniform3fv(u_DirLight, 1, (float*) &directionalLight);
+
+	GLint u_EyePosition = glGetUniformLocation(programA, "u_EyePosition");
+
 	Camera camera;
 	camera.position = vec3(-10.f, 1.f, 5.f);
 
@@ -328,6 +334,7 @@ int main()
 		// View matrix
 		mat4 view = camera.getViewMatrix();
 		glUniformMatrix4fv(u_View, 1, false, (GLfloat*)&view);
+		glUniform3fv(u_EyePosition, 1, (float*)&camera.position);
 
 		// Render grass
 		{
