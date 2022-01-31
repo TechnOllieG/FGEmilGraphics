@@ -19,11 +19,11 @@ int main()
 	GLint u_View = glGetUniformLocation(testShader, "u_View");
 	GLint u_Time = glGetUniformLocation(testShader, "u_Time");
 
-	GLint u_DirLight = glGetUniformLocation(programA, "u_DirLight");
+	GLint u_DirLight = glGetUniformLocation(testShader, "u_DirLight");
 	vec3 directionalLight = normalize(vec3(2.f, -5.f, -1.f));
 	glUniform3fv(u_DirLight, 1, (float*) &directionalLight);
 
-	GLint u_EyePosition = glGetUniformLocation(programA, "u_EyePosition");
+	GLint u_EyePosition = glGetUniformLocation(testShader, "u_EyePosition");
 
 	Camera camera;
 	camera.position = vec3(-10.f, 1.f, 5.f);
