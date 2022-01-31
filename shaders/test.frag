@@ -22,5 +22,5 @@ void main()
 //	o_Color = texture(u_SamplerA, texCoord);
 
 	o_Color = texture(u_Sampler, f_TexCoord);
-	o_Color = vec4(f_Normal, 1.f);
+	//o_Color = vec4(f_Normal, 1.f);
 }
