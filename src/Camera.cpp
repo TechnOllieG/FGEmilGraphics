@@ -37,6 +37,6 @@ mat4 Camera::getViewMatrix()
 		rotation = turnDelta * rotation;
 	}
 
-	vec3 center = position + forward;
+	vec3 center = position + forward - vec3(0.f, 2.f, 0.f);
 	return glm::lookAt(position, center, vec3(0.f, 1.f, 0.f));
 }
