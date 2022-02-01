@@ -9,11 +9,7 @@ enum class Mesh
 	MAX // Always leave this last
 };
 
-const float* mesh_Data[]
-{
-	quad_Data,
-	cube_Data,
-};
+extern const float* mesh_Data[];
 
 const unsigned int mesh_Data_Size[]
 {
@@ -21,11 +17,7 @@ const unsigned int mesh_Data_Size[]
 	sizeof(cube_Data),
 };
 
-const unsigned int* mesh_Indices[]
-{
-	quad_Index_Data,
-	cube_Index_Data,
-};
+extern const unsigned int* mesh_Indices[];
 
 const unsigned int mesh_Indices_Size[]
 {

@@ -9,9 +9,4 @@ enum class Texture
 	MAX // Always leave this last
 };
 
-const char* texture_Paths[]
-{
-	"textures/grass.jpg",
-	"textures/gravel.jpg",
-	"textures/test.png",
-};
+extern const char* texture_Paths[];

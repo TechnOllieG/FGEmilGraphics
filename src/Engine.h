@@ -4,15 +4,20 @@
 #include "Mesh.h"
 #include "ShaderPrograms.h"
 #include "Texture.h"
+#include "Object.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #define IMAGE_CHANNEL_AMOUNT 4
+#define MAX_OBJECT_AMOUNT 128
+#define INVALID_OBJECT_HANDLE -1
 
 GLFWwindow* window;
+Camera camera = Camera(vec3(-10.f, 1.f, 5.f));
 
 int windowWidth = 800.f;
 int windowHeight = 600.f;
+float time = 0.f;
 
 GLuint meshes[(int)Mesh::MAX];
 bool meshesLoaded = false;
@@ -20,6 +25,10 @@ GLuint shaderPrograms[(int)ShaderProgram::MAX];
 bool shaderProgramsLoaded = false;
 GLuint textures[(int)Texture::MAX];
 bool texturesLoaded = false;
+
+Object objects[MAX_OBJECT_AMOUNT];
+
+typedef int ObjectHandle;
 
 void handleWindowResize(GLFWwindow* window, int width, int height)
 {
@@ -207,6 +216,40 @@ GLuint getTexture(Texture texture)
 	return textures[(int)texture];
 }
 
+ObjectHandle spawnObject(vec3 position, quat rotation, vec3 scale, Mesh mesh, ShaderProgram shaderProgram, Texture texture)
+{
+	for (int i = 0; i < MAX_OBJECT_AMOUNT; i++)
+	{
+		if (objects[i].active)
+			continue;
+
+		objects[i].position = position;
+		objects[i].rotation = rotation;
+		objects[i].scale = scale;
+		objects[i].mesh = mesh;
+		objects[i].shaderProgram = shaderProgram;
+		objects[i].texture = texture;
+		objects[i].active = true;
+		return i;
+	}
+
+	return INVALID_OBJECT_HANDLE;
+}
+
+Object* getObject(ObjectHandle handle)
+{
+	if(handle >= 0 && handle < MAX_OBJECT_AMOUNT && objects[handle].active)
+		return &objects[handle];
+
+	return nullptr;
+}
+
+void destroyObject(ObjectHandle handle)
+{
+	if (handle >= 0 && handle < MAX_OBJECT_AMOUNT && objects[handle].active)
+		objects[handle].active = false;
+}
+
 void engInit()
 {
 	glfwInit();
@@ -223,4 +266,80 @@ void engInit()
 
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+}
+
+bool engLoop()
+{
+	glfwSwapBuffers(window);
+
+	glfwPollEvents();
+	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	time += 0.01f;
+
+	vec3 directionalLight = normalize(vec3(2.f, -5.f, -1.f));
+
+	float aspect = (float)windowWidth / (float)windowHeight;
+	mat4 projection = perspective(radians(90.f), aspect, 0.1f, 100.f);
+	mat4 view = camera.getViewMatrix();
+
+	for (int i = 0; i < MAX_OBJECT_AMOUNT; i++)
+	{
+		if (!objects[i].active)
+			continue;
+
+		Object obj = objects[i];
+		GLuint shader = getProgram(obj.shaderProgram);
+		glUseProgram(shader);
+		glBindVertexArray(getMesh(obj.mesh));
+
+		// Calculate model matrix
+		mat4 model = translate(mat4(1.f), obj.position);
+		model = rotate(mat4(1.f), -pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
+		model = scale(model, obj.scale);
+
+		// Set uniforms
+		glUniformMatrix4fv(glGetUniformLocation(shader, "u_Projection"), 1, false, (GLfloat*)&projection);
+		glUniform1f(glGetUniformLocation(shader, "u_Time"), time);
+		glUniformMatrix4fv(glGetUniformLocation(shader, "u_View"), 1, false, (GLfloat*)&view);
+		glUniform3fv(glGetUniformLocation(shader, "u_EyePosition"), 1, (float*)&camera.position);
+		glUniform3fv(glGetUniformLocation(shader, "u_DirLight"), 1, (float*)&directionalLight);
+		glUniformMatrix4fv(glGetUniformLocation(shader, "u_Model"), 1, false, (GLfloat*)&model);
+		glBindTexture(GL_TEXTURE_2D, getTexture(obj.texture));
+
+		// Render
+		glDrawElements(GL_TRIANGLES, mesh_Indices_Size[(int)obj.mesh], GL_UNSIGNED_INT, nullptr);
+	}
+
+	//// Render grass
+	//{
+	//	mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
+	//	model = rotate(mat4(1.f), -pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
+	//	model = scale(model, vec3(50.f));
+
+	//	glBindVertexArray(getMesh(Mesh::Quad));
+	//	glBindTexture(GL_TEXTURE_2D, getTexture(Texture::Grass));
+	//	glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
+	//	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+	//}
+
+	//// Render cube
+	//{
+	//	mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
+	//	model = translate(mat4(1.f), vec3(0.f, 1.5f, 0.f)) * rotate(mat4(1.f), time, vec3(2.f, 1.f, -3.2f));
+
+	//	glBindVertexArray(getMesh(Mesh::Cube));
+	//	glBindTexture(GL_TEXTURE_2D, getTexture(Texture::Gravel));
+	//	glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
+	//	glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, nullptr);
+	//}
+
+	if (glfwWindowShouldClose(window))
+	{
+		glfwDestroyWindow(window);
+		glfwTerminate();
+		return false;
+	}
+	return true;
 }

@@ -7,8 +7,4 @@ enum class ShaderProgram
 	MAX // Always leave this last
 };
 
-const char* shader_Paths[]
-{
-	"shaders/test.vert",
-	"shaders/test.frag",
-};
+extern const char* shader_Paths[];
