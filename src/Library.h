@@ -4,6 +4,9 @@
 
 using namespace glm;
 
-#define TAU 6.28318530717959f
-constexpr float deg2rad = TAU / 360.f;
-constexpr float rad2deg = 360.f / TAU;
+float clamp(float val, float min, float max)
+{
+	if (val < min) return min;
+	if (val > max) return max;
+	return val;
+}

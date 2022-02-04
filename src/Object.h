@@ -12,7 +12,7 @@ class Object
 public:
 	bool active = false;
 	vec3 position = vec3(0.f);
-	quat rotation = quat(1.f, 0.f, 0.f, 0.f);
+	quat rotation = quat();
 	vec3 scale = vec3(1.f);
 	Mesh mesh = Mesh::MAX;
 	ShaderProgram shaderProgram = ShaderProgram::MAX;

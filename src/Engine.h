@@ -1,23 +1,38 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "glm/gtx/quaternion.hpp"
 #include "Mesh.h"
 #include "ShaderPrograms.h"
 #include "Texture.h"
 #include "Object.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "Library.h"
 
 #define IMAGE_CHANNEL_AMOUNT 4
 #define MAX_OBJECT_AMOUNT 128
 #define INVALID_OBJECT_HANDLE -1
+#define SCREEN_RESOLUTION_WIDTH 800
+#define SCREEN_RESOLUTION_HEIGHT 600
 
 GLFWwindow* window;
 Camera camera = Camera(vec3(-10.f, 1.f, 5.f));
 
+const float cameraYawSensitivity = 5.f;
+const float cameraPitchSensitivity = cameraYawSensitivity;
+const float movementSpeed = 5.f;
+const float cameraMinTilt = -90.f;
+const float cameraMaxTilt = 90.f;
+
 int windowWidth = 800.f;
 int windowHeight = 600.f;
 float time = 0.f;
+float deltaTime = 0.f;
+
+vec2 accumulatedMouseDelta;
+float cameraYaw = 0.f;
+float cameraPitch = 0.f;
 
 GLuint meshes[(int)Mesh::MAX];
 bool meshesLoaded = false;
@@ -254,7 +269,7 @@ void engInit()
 {
 	glfwInit();
 
-	window = glfwCreateWindow(800, 600, "Graphics Course", nullptr, nullptr);
+	window = glfwCreateWindow(SCREEN_RESOLUTION_WIDTH, SCREEN_RESOLUTION_HEIGHT, "Graphics Course", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glewInit();
 
@@ -263,9 +278,42 @@ void engInit()
 	loadMeshes();
 	loadTextures();
 	loadPrograms();
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+}
+
+void moveCamera()
+{
+	vec3 forward = camera.rotation * vec3(0.f, 0.f, 1.f);
+	vec3 right = camera.rotation * vec3(1.f, 0.f, 0.f);
+
+	forward.y = 0.f;
+	forward = normalize(forward);
+
+	// Up-Down
+	if (glfwGetKey(window, GLFW_KEY_SPACE))
+		camera.position.y += movementSpeed * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
+		camera.position.y -= movementSpeed * deltaTime;
+
+	// Right-Left
+	if (glfwGetKey(window, GLFW_KEY_D))
+		camera.position -= right * movementSpeed * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_A))
+		camera.position += right * movementSpeed * deltaTime;
+
+	// Forward-Backward
+	if (glfwGetKey(window, GLFW_KEY_W))
+		camera.position += forward * movementSpeed * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_S))
+		camera.position -= forward * movementSpeed * deltaTime;
+
+	accumulatedMouseDelta.x = fmod(accumulatedMouseDelta.x, 360.f);
+	accumulatedMouseDelta.y = clamp(accumulatedMouseDelta.y, cameraMinTilt, cameraMaxTilt);
+
+	camera.rotation = angleAxis(radians(-accumulatedMouseDelta.x), vec3(0.f, 1.f, 0.f)) * angleAxis(radians(accumulatedMouseDelta.y), vec3(1.f, 0.f, 0.f));
 }
 
 bool engLoop()
@@ -276,12 +324,24 @@ bool engLoop()
 	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	time += 0.01f;
+	float tempTime = glfwGetTime();
+	deltaTime = tempTime - time;
+	time = glfwGetTime();
 
 	vec3 directionalLight = normalize(vec3(2.f, -5.f, -1.f));
 
 	float aspect = (float)windowWidth / (float)windowHeight;
 	mat4 projection = perspective(radians(90.f), aspect, 0.1f, 100.f);
+
+	dvec2 middleScreen = vec2(SCREEN_RESOLUTION_WIDTH * 0.5f, SCREEN_RESOLUTION_HEIGHT * 0.5f);
+	dvec2 mousePos;
+	glfwGetCursorPos(window, &mousePos.x, &mousePos.y);
+	glfwSetCursorPos(window, middleScreen.x, middleScreen.y);
+	vec2 mouseDelta = mousePos - middleScreen;
+	accumulatedMouseDelta.x += mouseDelta.x * deltaTime * cameraYawSensitivity;
+	accumulatedMouseDelta.y += mouseDelta.y * deltaTime * cameraPitchSensitivity;
+
+	moveCamera();
 	mat4 view = camera.getViewMatrix();
 
 	for (int i = 0; i < MAX_OBJECT_AMOUNT; i++)
@@ -296,8 +356,8 @@ bool engLoop()
 
 		// Calculate model matrix
 		mat4 model = translate(mat4(1.f), obj.position);
-		model = rotate(mat4(1.f), -pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
-		model = scale(model, obj.scale);
+		model = toMat4(obj.rotation) * model;
+		model = scale(mat4(1.f), obj.scale) * model;
 
 		// Set uniforms
 		glUniformMatrix4fv(glGetUniformLocation(shader, "u_Projection"), 1, false, (GLfloat*)&projection);
@@ -311,29 +371,6 @@ bool engLoop()
 		// Render
 		glDrawElements(GL_TRIANGLES, mesh_Indices_Size[(int)obj.mesh], GL_UNSIGNED_INT, nullptr);
 	}
-
-	//// Render grass
-	//{
-	//	mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
-	//	model = rotate(mat4(1.f), -pi<float>() / 2.f, vec3(1.f, 0.f, 0.f));
-	//	model = scale(model, vec3(50.f));
-
-	//	glBindVertexArray(getMesh(Mesh::Quad));
-	//	glBindTexture(GL_TEXTURE_2D, getTexture(Texture::Grass));
-	//	glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
-	//	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-	//}
-
-	//// Render cube
-	//{
-	//	mat4 model;// = translate(mat4(1.f), vec3(0.f, 0.f, -1.f));
-	//	model = translate(mat4(1.f), vec3(0.f, 1.5f, 0.f)) * rotate(mat4(1.f), time, vec3(2.f, 1.f, -3.2f));
-
-	//	glBindVertexArray(getMesh(Mesh::Cube));
-	//	glBindTexture(GL_TEXTURE_2D, getTexture(Texture::Gravel));
-	//	glUniformMatrix4fv(u_Model, 1, false, (GLfloat*)&model);
-	//	glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, nullptr);
-	//}
 
 	if (glfwWindowShouldClose(window))
 	{

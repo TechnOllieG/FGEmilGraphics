@@ -10,7 +10,7 @@ int main()
 {
 	engInit();
 
-	ObjectHandle grass = spawnObject(vec3(0.f), quat(), vec3(50.f), Mesh::Quad, ShaderProgram::Test, Texture::Grass);
+	ObjectHandle grass = spawnObject(vec3(0.f), angleAxis(radians(90.f), vec3(-1.f, 0.f, 0.f)), vec3(50.f), Mesh::Quad, ShaderProgram::Test, Texture::Grass);
 	ObjectHandle block = spawnObject(vec3(0.f, 1.5f, 0.f), quat(), vec3(1.f), Mesh::Cube, ShaderProgram::Test, Texture::Gravel);
 	
 	while (engLoop())
